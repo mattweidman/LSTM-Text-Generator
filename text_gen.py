@@ -67,6 +67,10 @@ for i, line in enumerate(lines):
     for j, c in enumerate(line):
         data[i][j][char_to_ind[c]] = 1
 
+# split data into inputs and outputs
+seq_len = 100
+X = np.zeros((0, seq_len, num_chars))
+
 # create LSTM model
 lstm_input = kl.Input(shape=[maxlen, num_chars])
 H = kl.LSTM(256)(lstm_input)
