@@ -67,22 +67,26 @@ lstm_output = kl.Dense(num_chars, activation='softmax')(H)
 lstm = km.Model(lstm_input, lstm_output)
 
 # load weights
-filename = "weights-19-0.9871.hdf5"
+filename = "weights/weights-19-0.9871.hdf5"
 lstm.load_weights(filename)
 lstm.compile(loss="categorical_crossentropy", optimizer="adam")
 
 # choose a seed
-seed = X[np.random.randint(0, len(X)-1)]
-pattern = seed.copy()
-gen = ""
-for i in range(1000):
-    x = pattern[np.newaxis,:,:]
-    prediction = lstm.predict(x, verbose=0).flatten()
-    c = vec_to_char(prediction)
-    gen += c
-    newVec = np.zeros(prediction.shape)
-    newVec[np.argmax(prediction)] = 1
-    pattern = np.concatenate((pattern, newVec[np.newaxis,:]), axis=0)
-    pattern = pattern[1:]
-print("seed: " + tensor_to_string(seed[np.newaxis,:,:]))
-print("gen: " + gen)
+with open("gen2.txt", 'w') as outfile:
+    for j in range(10):
+        seed = X[np.random.randint(0, len(X)-1)]
+        pattern = seed.copy()
+        gen = ""
+        for i in range(1000):
+            x = pattern[np.newaxis,:,:]
+            prediction = lstm.predict(x, verbose=0).flatten()
+            c = vec_to_char(prediction)
+            gen += c
+            newVec = np.zeros(prediction.shape)
+            newVec[np.argmax(prediction)] = 1
+            pattern = np.concatenate((pattern, newVec[np.newaxis,:]), axis=0)
+            pattern = pattern[1:]
+        outfile.write("seed: " + tensor_to_string(seed[np.newaxis,:,:]) + "\n")
+        outfile.write("gen: " + gen + "\n")
+        print("sequences generated: " + str(j))
+print("Done.")

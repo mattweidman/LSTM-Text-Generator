@@ -1,4 +1,6 @@
+import os
 import re
+import sys
 
 import keras.callbacks as kc
 import keras.layers as kl
@@ -7,12 +9,21 @@ import keras.models as km
 
 import numpy as np
 
+# find weights file
+weightfile = "weights2-" + sys.argv[1]
+for f in os.listdir('weights'):
+    if weightfile in f:
+        weightfile = "weights/" + f
+        break
+
 # load raw text
 filename = "alice.txt"
 with open(filename, 'r') as f:
     lines = f.readlines()[31:3370]
     #lines = [l if len(l) <= 2 else l[:-2] + " " for l in lines]
     raw_text = "".join(lines)
+
+writefile = "gen3.txt"
 
 # find list of characters
 chars = sorted(set(raw_text)) + ['START', 'END', 'BLANK']
@@ -61,28 +72,37 @@ for i in range(len(Xarr)):
 # create LSTM model
 print("creating model")
 lstm_input = kl.Input(shape=[seq_len, num_chars])
-H = kl.LSTM(256)(lstm_input)
+H = kl.LSTM(256, return_sequences=True)(lstm_input)
+H = kl.Dropout(0.2)(H)
+H = kl.LSTM(256)(H)
 H = kl.Dropout(0.2)(H)
 lstm_output = kl.Dense(num_chars, activation='softmax')(H)
 lstm = km.Model(lstm_input, lstm_output)
-
-# load weights
-filename = "weights-19-0.9871.hdf5"
-lstm.load_weights(filename)
 lstm.compile(loss="categorical_crossentropy", optimizer="adam")
 
-# choose a seed
-seed = X[np.random.randint(0, len(X)-1)]
-pattern = seed.copy()
-gen = ""
-for i in range(1000):
-    x = pattern[np.newaxis,:,:]
-    prediction = lstm.predict(x, verbose=0).flatten()
-    c = vec_to_char(prediction)
-    gen += c
-    newVec = np.zeros(prediction.shape)
-    newVec[np.argmax(prediction)] = 1
-    pattern = np.concatenate((pattern, newVec[np.newaxis,:]), axis=0)
-    pattern = pattern[1:]
-print("seed: " + tensor_to_string(seed[np.newaxis,:,:]))
-print("gen: " + gen)
+# load weights
+lstm.load_weights(weightfile)
+lstm.compile(loss="categorical_crossentropy", optimizer="adam")
+
+# generate text
+with open(writefile, 'w') as outfile:
+    for j in range(10):
+        # choose a seed
+        seed = X[np.random.randint(0, len(X)-1)]
+        pattern = seed.copy()
+        # generate text
+        gen = ""
+        for i in range(1000):
+            x = pattern[np.newaxis,:,:]
+            prediction = lstm.predict(x, verbose=0).flatten()
+            c = vec_to_char(prediction)
+            gen += c
+            newVec = np.zeros(prediction.shape)
+            newVec[np.argmax(prediction)] = 1
+            pattern = np.concatenate((pattern, newVec[np.newaxis,:]), axis=0)
+            pattern = pattern[1:]
+        # save text
+        outfile.write("seed: " + tensor_to_string(seed[np.newaxis,:,:]) + "\n")
+        outfile.write("gen: " + gen + "\n")
+        print("Sequences generated: " + str(j+1))
+print("Done.")
